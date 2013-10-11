@@ -20,30 +20,31 @@ class Util
     public static $classAliases = array(
 
         //Format classes
-        'AmfFormat' => 'Luracast\\Restler\\Format\\AmfFormat',
-        'JsFormat' => 'Luracast\\Restler\\Format\\JsFormat',
-        'JsonFormat' => 'Luracast\\Restler\\Format\\JsonFormat',
-        'HtmlFormat' => 'Luracast\\Restler\\Format\\HtmlFormat',
-        'PlistFormat' => 'Luracast\\Restler\\Format\\PlistFormat',
-        'UploadFormat' => 'Luracast\\Restler\\Format\\UploadFormat',
-        'UrlEncodedFormat' => 'Luracast\\Restler\\Format\\UrlEncodedFormat',
-        'XmlFormat' => 'Luracast\\Restler\\Format\\XmlFormat',
-        'YamlFormat' => 'Luracast\\Restler\\Format\\YamlFormat',
+        'AmfFormat' => 'Luracast\Restler\Format\AmfFormat',
+        'JsFormat' => 'Luracast\Restler\Format\JsFormat',
+        'JsonFormat' => 'Luracast\Restler\Format\JsonFormat',
+        'HtmlFormat' => 'Luracast\Restler\Format\HtmlFormat',
+        'PlistFormat' => 'Luracast\Restler\Format\PlistFormat',
+        'UploadFormat' => 'Luracast\Restler\Format\UploadFormat',
+        'UrlEncodedFormat' => 'Luracast\Restler\Format\UrlEncodedFormat',
+        'XmlFormat' => 'Luracast\Restler\Format\XmlFormat',
+        'YamlFormat' => 'Luracast\Restler\Format\YamlFormat',
 
         //Filter classes
-        'RateLimit' => 'Luracast\\Restler\\Filter\\RateLimit',
+        'RateLimit' => 'Luracast\Restler\Filter\RateLimit',
+        'Forms' => 'Luracast\Restler\Forms',
 
         //API classes
-        'Resources' => 'Luracast\\Restler\\Resources',
+        'Resources' => 'Luracast\Restler\Resources',
 
         //Cache classes
-        'HumanReadableCache' => 'Luracast\\Restler\\HumanReadableCache',
+        'HumanReadableCache' => 'Luracast\Restler\HumanReadableCache',
 
         //Utility classes
-        'Object' => 'Luracast\\Restler\\Data\\Object',
+        'Object' => 'Luracast\Restler\Data\Object',
 
         //Exception
-        'RestException' => 'Luracast\\Restler\\RestException'
+        'RestException' => 'Luracast\Restler\RestException'
     );
 
     /**
