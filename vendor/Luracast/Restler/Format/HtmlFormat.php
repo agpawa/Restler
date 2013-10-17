@@ -48,15 +48,15 @@ class HtmlFormat extends Format
         if (!static::$viewPath) {
             $array = explode('vendor', __DIR__, 2);
             static::$viewPath = $array[0] . 'views';
-            if (!is_readable(static::$viewPath)) {
-                throw new \Exception(
-                    'The views directory `'
-                    . self::$viewPath . '` should exist with read permission.'
-                );
-            }
+        }
+        if (!is_readable(static::$viewPath)) {
+            throw new \Exception(
+                'The views directory `'
+                . self::$viewPath . '` should exist with read permission.'
+            );
         }
         static::$data['basePath'] = dirname($_SERVER['SCRIPT_NAME']);
-        static::$data['baseUrl'] = Util::$restler->_baseUrl;
+        static::$data['baseUrl'] = Util::$restler->getBaseUrl();
     }
 
     /**
