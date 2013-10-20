@@ -234,11 +234,14 @@ class HtmlFormat extends Format
     public function encode($data, $humanReadable = false)
     {
         try {
-            $success = is_null($this->restler->exception);
+            $exception = $this->restler->exception;
+            $success = is_null($exception);
+            $error = $success ? null : $exception->getMessage();
             $data = array(
                 'response' => Object::toArray($data),
                 'stages' => $this->restler->getEvents(),
                 'success' => $success,
+                'error' => $error
             );
             $info = $data['api'] = $this->restler->apiMethodInfo;
             $metadata = Util::nestedValue(
