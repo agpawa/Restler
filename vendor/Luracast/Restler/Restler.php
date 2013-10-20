@@ -854,7 +854,7 @@ class Restler extends EventDispatcher
         $this->dispatch('validate');
 
         $o = & $this->apiMethodInfo;
-        foreach ($o->metadata['param'] as $index => &$param) {
+        foreach ($o->metadata['param'] as $index => $param) {
             $info = & $param [CommentParser::$embeddedDataName];
             if (!isset ($info['validate'])
                 || $info['validate'] != false
@@ -877,13 +877,13 @@ class Restler extends EventDispatcher
                 }
                 $valid = $o->parameters[$index];
                 $o->parameters[$index] = null;
-                $param[$index]['autofocus'] = true;
+                $o->metadata['param'][$index]['autofocus'] = true;
 
                 $valid = $validator::validate(
                     $valid, $info
                 );
                 $o->parameters[$index] = $valid;
-                unset($param[$index]['autofocus']);
+                unset($o->metadata['param'][$index]['autofocus']);
             }
         }
     }
