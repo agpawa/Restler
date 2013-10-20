@@ -854,14 +854,14 @@ class Restler extends EventDispatcher
         $this->dispatch('validate');
 
         $o = & $this->apiMethodInfo;
-        foreach ($o->metadata['param'] as $index => $param) {
+        foreach ($o->metadata['param'] as $index => &$param) {
             $info = & $param [CommentParser::$embeddedDataName];
             if (!isset ($info['validate'])
                 || $info['validate'] != false
             ) {
                 if (isset($info['method'])) {
-                        $object = $this->apiClassInstance
-                            = Util::initialize($o->className);
+                    $object = $this->apiClassInstance
+                        = Util::initialize($o->className);
                     $info ['apiClassInstance'] = $object;
                 }
                 //convert to instance of ValidationInfo
@@ -877,11 +877,13 @@ class Restler extends EventDispatcher
                 }
                 $valid = $o->parameters[$index];
                 $o->parameters[$index] = null;
+                $param[$index]['autofocus'] = true;
 
                 $valid = $validator::validate(
                     $valid, $info
                 );
                 $o->parameters[$index] = $valid;
+                unset($param[$index]['autofocus']);
             }
         }
     }
@@ -1340,7 +1342,7 @@ class Restler extends EventDispatcher
 
     /**
      * post call
-     * 
+     *
      * call _post_{methodName}_{extension} if exists with the composed and
      * serialized (applying the repose format) response data
      *
