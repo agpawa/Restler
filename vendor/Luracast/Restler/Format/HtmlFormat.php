@@ -58,6 +58,7 @@ class HtmlFormat extends Format
         }
         static::$data['basePath'] = dirname($_SERVER['SCRIPT_NAME']);
         static::$data['baseUrl'] = Util::$restler->getBaseUrl();
+        static::$data['currentPath'] = Util::$restler->url;
     }
 
     public static function twig(array $data, $debug = true)
