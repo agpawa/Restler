@@ -5,7 +5,6 @@ use Exception;
 use InvalidArgumentException;
 use Luracast\Restler\Data\ApiMethodInfo;
 use Luracast\Restler\Data\ValidationInfo;
-use Luracast\Restler\Data\Validator;
 use Luracast\Restler\Format\iFormat;
 use Luracast\Restler\Format\UrlEncodedFormat;
 
@@ -33,6 +32,7 @@ class Restler extends EventDispatcher
     // ------------------------------------------------------------------
     /**
      * Reference to the last exception thrown
+     *
      * @var RestException
      */
     public $exception = null;
@@ -79,7 +79,14 @@ class Restler extends EventDispatcher
      *
      * @var int
      */
-    public $responseCode=200;
+    public $responseCode = 200;
+    /**
+     * method information including metadata
+     *
+     * @var ApiMethodInfo
+     */
+    public $apiMethodInfo;
+    public $refreshCache = false;
     /**
      * @var string base url of the api service
      */
@@ -89,12 +96,6 @@ class Restler extends EventDispatcher
      *           before throwing content negotiation failed
      */
     protected $requestFormatDiffered = false;
-    /**
-     * method information including metadata
-     *
-     * @var ApiMethodInfo
-     */
-    public $apiMethodInfo;
     /**
      * @var int for calculating execution time
      */
@@ -106,7 +107,6 @@ class Restler extends EventDispatcher
      * @var boolean
      */
     protected $productionMode = false;
-    public $refreshCache = false;
     /**
      * Caching of url map is enabled or not
      *
@@ -156,7 +156,6 @@ class Restler extends EventDispatcher
     // Protected variables
     //
     // ------------------------------------------------------------------
-
     /**
      * Data sent to the service
      *
@@ -226,7 +225,12 @@ class Restler extends EventDispatcher
     {
         try {
             try {
-                $this->get();
+                try {
+                    $this->get();
+                } catch (Exception $e) {
+                    $this->route();
+                    throw $e;
+                }
                 $this->route();
             } catch (Exception $e) {
                 $this->negotiate();
@@ -245,7 +249,7 @@ class Restler extends EventDispatcher
             $this->authenticate();
             $this->postAuthFilter();
             $this->validate();
-            if(!$this->apiClassInstance) {
+            if (!$this->apiClassInstance) {
                 $this->apiClassInstance
                     = Util::initialize($this->apiMethodInfo->className);
             }
@@ -255,7 +259,7 @@ class Restler extends EventDispatcher
             $this->postCall();
             $this->respond();
         } catch (Exception $e) {
-            try{
+            try {
                 $this->message($e);
             } catch (Exception $e2) {
                 $this->message($e2);
@@ -303,7 +307,7 @@ class Restler extends EventDispatcher
      * Call this method and pass all the formats that should be  supported by
      * the API Server. Accepts multiple parameters
      *
-     * @param string ,... $formatName   class name of the format class that
+     * @param string                    ,... $formatName   class name of the format class that
      *                                  implements iFormat
      *
      * @example $restler->setSupportedFormats('JsonFormat', 'XmlFormat'...);
@@ -320,7 +324,7 @@ class Restler extends EventDispatcher
 
             if (!$obj instanceof iFormat)
                 throw new Exception('Invalid format class; must implement ' .
-                'iFormat interface');
+                    'iFormat interface');
             if ($throwException && get_class($obj) == get_class($this->requestFormat)) {
                 $throwException = false;
             }
@@ -341,39 +345,6 @@ class Restler extends EventDispatcher
         }
         $this->formatMap['default'] = $args[0];
         $this->formatMap['extensions'] = array_keys($extensions);
-    }
-
-    /**
-     * Call this method and pass all the formats that can be used to override
-     * the supported formats using `@format` comment. Accepts multiple parameters
-     *
-     * @param string ,... $formatName   class name of the format class that
-     *                                  implements iFormat
-     *
-     * @example $restler->setOverridingFormats('JsonFormat', 'XmlFormat'...);
-     * @throws Exception
-     */
-    public function setOverridingFormats($format = null /*[, $format2...$farmatN]*/)
-    {
-        $args = func_get_args();
-        $extensions = array();
-        foreach ($args as $className) {
-
-            $obj = Util::initialize($className);
-
-            if (!$obj instanceof iFormat)
-                throw new Exception('Invalid format class; must implement ' .
-                'iFormat interface');
-
-            foreach ($obj->getMIMEMap() as $mime => $extension) {
-                if (!isset($this->formatOverridesMap[$extension]))
-                    $this->formatOverridesMap[$extension] = $className;
-                if (!isset($this->formatOverridesMap[$mime]))
-                    $this->formatOverridesMap[$mime] = $className;
-                $extensions[".$extension"] = true;
-            }
-        }
-        $this->formatOverridesMap['extensions'] = array_keys($extensions);
     }
 
     /**
@@ -399,7 +370,7 @@ class Restler extends EventDispatcher
         }
 
         $this->baseUrl = rtrim($baseUrl
-        . substr($fullPath, 0, strlen($fullPath) - strlen($path)), '/');
+            . substr($fullPath, 0, strlen($fullPath) - strlen($path)), '/');
 
         $path = preg_replace('/(\/*\?.*$)|(\/$)/', '', $path);
         $path = str_replace(
@@ -434,7 +405,7 @@ class Restler extends EventDispatcher
      */
     protected function getRequestFormat()
     {
-        $format = null ;
+        $format = null;
         // check if client has sent any information on request format
         if (!empty($_SERVER['CONTENT_TYPE'])) {
             $mime = $_SERVER['CONTENT_TYPE'];
@@ -460,7 +431,7 @@ class Restler extends EventDispatcher
                 );
             }
         }
-        if(!$format){
+        if (!$format) {
             $format = Util::initialize($this->formatMap['default']);
         }
         return $format;
@@ -552,25 +523,19 @@ class Restler extends EventDispatcher
         ) {
             if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
                 header('Access-Control-Allow-Methods: '
-                . Defaults::$accessControlAllowMethods);
+                    . Defaults::$accessControlAllowMethods);
 
             if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
                 header('Access-Control-Allow-Headers: '
-                . $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']);
+                    . $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']);
 
             header('Access-Control-Allow-Origin: ' .
-            (Defaults::$accessControlAllowOrigin == '*' ? $_SERVER['HTTP_ORIGIN'] : Defaults::$accessControlAllowOrigin));
+                (Defaults::$accessControlAllowOrigin == '*' ? $_SERVER['HTTP_ORIGIN'] : Defaults::$accessControlAllowOrigin));
             header('Access-Control-Allow-Credentials: true');
 
             exit(0);
         }
     }
-
-    // ==================================================================
-    //
-    // Protected functions
-    //
-    // ------------------------------------------------------------------
 
     /**
      * Parses the request to figure out the best format for response.
@@ -620,7 +585,7 @@ class Restler extends EventDispatcher
                 );
                 $format->setExtension($extension);
                 // echo "Extension $extension";
-               return $format;
+                return $format;
             }
         }
         // check if client has sent list of accepted data formats
@@ -707,6 +672,12 @@ class Restler extends EventDispatcher
             return $format;
         }
     }
+
+    // ==================================================================
+    //
+    // Protected functions
+    //
+    // ------------------------------------------------------------------
 
     protected function negotiateCharset()
     {
@@ -825,7 +796,7 @@ class Restler extends EventDispatcher
         } catch (RestException $e) {
             $this->authVerified = true;
             if ($accessLevel > 1) { //when it is not a hybrid api
-               throw ($e);
+                throw ($e);
             } else {
                 $this->authenticated = false;
             }
@@ -837,7 +808,7 @@ class Restler extends EventDispatcher
      */
     protected function postAuthFilter()
     {
-        if(empty($this->filterObjects)) {
+        if (empty($this->filterObjects)) {
             return;
         }
         $this->dispatch('postAuthFilter');
@@ -888,13 +859,37 @@ class Restler extends EventDispatcher
         }
     }
 
+    /**
+     * pre call
+     *
+     * call _pre_{methodName)_{extension} if exists with the same parameters as
+     * the api method
+     *
+     * @example _pre_get_json
+     *
+     */
+    protected function preCall()
+    {
+        $o = & $this->apiMethodInfo;
+        $preCall = '_pre_' . $o->methodName . '_'
+            . $this->requestFormat->getExtension();
+
+        if (method_exists($o->className, $preCall)) {
+            $this->dispatch('preCall');
+            call_user_func_array(array(
+                $this->apiClassInstance,
+                $preCall
+            ), $o->parameters);
+        }
+    }
+
     protected function call()
     {
         $this->dispatch('call');
         $o = & $this->apiMethodInfo;
         $accessLevel = max(Defaults::$apiAccessLevel,
             $o->accessLevel);
-        $object =  $this->apiClassInstance;
+        $object = $this->apiClassInstance;
         switch ($accessLevel) {
             case 3 : //protected method
                 $reflectionMethod = new \ReflectionMethod(
@@ -1002,6 +997,27 @@ class Restler extends EventDispatcher
 
     }
 
+    /**
+     * post call
+     *
+     * call _post_{methodName}_{extension} if exists with the composed and
+     * serialized (applying the repose format) response data
+     *
+     * @example _post_get_json
+     */
+    protected function postCall()
+    {
+        $postCall = '_post_' . $this->apiMethodInfo->methodName . '_' .
+            $this->responseFormat->getExtension();
+        if (method_exists($this->apiClassInstance, $postCall)) {
+            $this->dispatch('postCall');
+            $this->responseData = call_user_func(array(
+                $this->apiClassInstance,
+                $postCall
+            ), $this->responseData);
+        }
+    }
+
     protected function respond()
     {
         $this->dispatch('respond');
@@ -1064,6 +1080,39 @@ class Restler extends EventDispatcher
     }
 
     /**
+     * Call this method and pass all the formats that can be used to override
+     * the supported formats using `@format` comment. Accepts multiple parameters
+     *
+     * @param string                    ,... $formatName   class name of the format class that
+     *                                  implements iFormat
+     *
+     * @example $restler->setOverridingFormats('JsonFormat', 'XmlFormat'...);
+     * @throws Exception
+     */
+    public function setOverridingFormats($format = null /*[, $format2...$farmatN]*/)
+    {
+        $args = func_get_args();
+        $extensions = array();
+        foreach ($args as $className) {
+
+            $obj = Util::initialize($className);
+
+            if (!$obj instanceof iFormat)
+                throw new Exception('Invalid format class; must implement ' .
+                    'iFormat interface');
+
+            foreach ($obj->getMIMEMap() as $mime => $extension) {
+                if (!isset($this->formatOverridesMap[$extension]))
+                    $this->formatOverridesMap[$extension] = $className;
+                if (!isset($this->formatOverridesMap[$mime]))
+                    $this->formatOverridesMap[$mime] = $className;
+                $extensions[".$extension"] = true;
+            }
+        }
+        $this->formatOverridesMap['extensions'] = array_keys($extensions);
+    }
+
+    /**
      * Provides backward compatibility with older versions of Restler
      *
      * @param int $version restler version
@@ -1083,7 +1132,7 @@ class Restler extends EventDispatcher
      * @param int $version                 maximum version number supported
      *                                     by  the api
      * @param int $minimum                 minimum version number supported
-     * (optional)
+     *                                     (optional)
      *
      * @throws InvalidArgumentException
      * @return void
@@ -1118,8 +1167,8 @@ class Restler extends EventDispatcher
      * protected methods will need at least one authentication class to be set
      * in order to allow that method to be executed
      *
-     * @param string $className     of the authentication class
-     * @param string $resourcePath  optional url prefix for mapping
+     * @param string $className    of the authentication class
+     * @param string $resourcePath optional url prefix for mapping
      */
     public function addAuthenticationClass($className, $resourcePath = null)
     {
@@ -1147,7 +1196,7 @@ class Restler extends EventDispatcher
      */
     public function addAPIClass($className, $resourcePath = null)
     {
-        try{
+        try {
             if ($this->productionMode && is_null($this->cached)) {
                 $routes = $this->cache->get('routes');
                 if (isset($routes) && is_array($routes)) {
@@ -1206,7 +1255,7 @@ class Restler extends EventDispatcher
             }
         } catch (Exception $e) {
             $e = new Exception(
-                "addAPIClass('$className') failed. ".$e->getMessage(),
+                "addAPIClass('$className') failed. " . $e->getMessage(),
                 $e->getCode(),
                 $e
             );
@@ -1218,7 +1267,7 @@ class Restler extends EventDispatcher
     /**
      * Add class for custom error handling
      *
-     * @param string $className   of the error handling class
+     * @param string $className of the error handling class
      */
     public function addErrorClass($className)
     {
@@ -1237,6 +1286,7 @@ class Restler extends EventDispatcher
 
     /**
      * API version requested by the client
+     *
      * @return int
      */
     public function getRequestedApiVersion()
@@ -1313,51 +1363,6 @@ class Restler extends EventDispatcher
     {
         if ($this->productionMode && !$this->cached) {
             $this->cache->set('routes', Routes::toArray());
-        }
-    }
-
-    /**
-     * pre call
-     *
-     * call _pre_{methodName)_{extension} if exists with the same parameters as
-     * the api method
-     *
-     * @example _pre_get_json
-     *
-     */
-    protected function preCall()
-    {
-        $o = & $this->apiMethodInfo;
-        $preCall = '_pre_' . $o->methodName . '_'
-            . $this->requestFormat->getExtension();
-
-        if (method_exists($o->className, $preCall)) {
-            $this->dispatch('preCall');
-            call_user_func_array(array(
-                $this->apiClassInstance,
-                $preCall
-            ), $o->parameters);
-        }
-    }
-
-    /**
-     * post call
-     *
-     * call _post_{methodName}_{extension} if exists with the composed and
-     * serialized (applying the repose format) response data
-     *
-     * @example _post_get_json
-     */
-    protected function postCall()
-    {
-        $postCall = '_post_' . $this->apiMethodInfo->methodName . '_' .
-            $this->responseFormat->getExtension();
-        if (method_exists($this->apiClassInstance, $postCall)) {
-            $this->dispatch('postCall');
-            $this->responseData = call_user_func(array(
-                $this->apiClassInstance,
-                $postCall
-            ), $this->responseData);
         }
     }
 }
